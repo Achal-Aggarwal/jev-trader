@@ -275,7 +275,17 @@ export class Market {
     return Number(ethers.utils.formatEther(limit.mul(feeWei)));
   }
 
+  /**
+   * A send with no receipt may still be in the mempool. Resyncing to the confirmed nonce alone would
+   * sign that nonce again and get "nonce too low" every block until it clears, so take the higher of
+   * confirmed and pending. If the send was dropped instead, pending equals confirmed and its nonce is reused.
+   */
   private async resyncNonce() {
-    this.nonce = parseInt(await rpc<string>("eth_getTransactionCount", [this.wallet!.address, "latest"]), 16);
+    const addr = this.wallet!.address;
+    const [latest, pending] = await Promise.all([
+      rpc<string>("eth_getTransactionCount", [addr, "latest"]),
+      rpc<string>("eth_getTransactionCount", [addr, "pending"]).catch(() => "0x0"),
+    ]);
+    this.nonce = Math.max(parseInt(latest, 16), parseInt(pending, 16));
   }
 }
