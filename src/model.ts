@@ -104,4 +104,16 @@ export class MockModel implements Model {
   }
 }
 
-export const createModel = (): Model => (config.model === "jev" ? new JevModel() : new MockModel());
+/**
+ * Jev needs TYPESAFE_AI_API_KEY. Without one every call fails, so every block is a late hold and
+ * the dashboard shows nothing happening. Run the mock instead: the snapshot names it, so the
+ * dashboard labels it as a stand-in rather than passing it off as Jev.
+ */
+export const createModel = (): Model => {
+  if (config.model !== "jev") return new MockModel();
+  if (!process.env.TYPESAFE_AI_API_KEY?.trim()) {
+    console.warn("MODEL=jev but TYPESAFE_AI_API_KEY is not set: running the mock model instead");
+    return new MockModel();
+  }
+  return new JevModel();
+};
